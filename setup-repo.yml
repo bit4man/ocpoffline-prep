@@ -1,0 +1,184 @@
+# Created by John Call (jcall@redhat.com)
+# Modified by Peter Larsen (plarsen@redhat.com)
+# Automate the process of populating repos and images
+# for an OpenShift 3.9 disconnected install
+# https://access.redhat.com/documentation/en-us/openshift_container_platform/3.9/html-single/installation_and_configuration/
+#
+# RHEL pre-requisite: # yum --enablerepo=rhel-7-server-extras-rpms install yum-utils createrepo docker python-docker-py
+# Fedora 28 re-requisites: # sudo dnf install yum-utils createrepo docker python2-docker
+#
+# The reposync with --newest (-n) is 5.5GB
+# The imagepull is 25GB (~9GB gzip'd)
+
+---
+- hosts: localhost
+  become: true
+  gather_facts: yes
+  vars:
+    prereqs: false
+    reposync: true
+    imagepull: false
+
+    localregistry: "ocpbastion.ose3.peterlarsen.org:5000"
+    repo_list:
+      #OCP 3.11 https://access.redhat.com/documentation/en-us/openshift_container_platform/3.11/html-single/installing_clusters/#host-registration
+      - rhel-7-server-rpms
+      - rhel-7-server-extras-rpms
+      - rhel-7-server-ose-3.11-rpms
+      - rhel-7-server-ansible-2.6-rpms
+      - rh-gluster-3-client-for-rhel-7-server-rpms
+
+      #OCS-I 3.10 - https://access.redhat.com/documentation/en-us/red_hat_openshift_container_storage/3.10/html-single/deployment_guide/#CRS_Installing_Red_Hat_Storage_Server_on_Red_Hat_Enterprise_Linux_Layered_Install
+      #- rhel-7-server-rpms
+      #- rhel-7-server-extras-rpms
+      - rh-gluster-3-for-rhel-7-server-rpms
+
+      #OCP 3.9
+      #- rhel-7-server-rpms
+      #- rhel-7-fast-datapath-rpms
+      #- rhel-7-server-extras-rpms
+      #- rhel-7-server-ose-3.9-rpms
+      #- rhel-7-server-ansible-2.4-rpms
+    ocp_tag: "v3.11.88"
+    ocp_host:
+      - rhel7/etcd:3.2.22
+      - openshift3/apb-base:{{ ocp_tag }}
+      - openshift3/apb-tools:{{ ocp_tag }}
+      - openshift3/automation-broker-apb:{{ ocp_tag }}
+      - openshift3/csi-attacher:{{ ocp_tag }}
+      - openshift3/csi-driver-registrar:{{ ocp_tag }}
+      - openshift3/csi-livenessprobe:{{ ocp_tag }}
+      - openshift3/csi-provisioner:{{ ocp_tag }}
+      - openshift3/grafana:{{ ocp_tag }}
+      - openshift3/local-storage-provisioner:{{ ocp_tag }}
+      - openshift3/manila-provisioner:{{ ocp_tag }}
+      - openshift3/mariadb-apb:{{ ocp_tag }}
+      - openshift3/mediawiki:{{ ocp_tag }}
+      - openshift3/mediawiki-apb:{{ ocp_tag }}
+      - openshift3/mysql-apb:{{ ocp_tag }}
+      - openshift3/ose-ansible:{{ ocp_tag }}
+      - openshift3/ose-ansible-service-broker:{{ ocp_tag }}
+      - openshift3/ose-cli:{{ ocp_tag }}
+      - openshift3/ose-cluster-autoscaler:{{ ocp_tag }}
+      - openshift3/ose-cluster-capacity:{{ ocp_tag }}
+      - openshift3/ose-cluster-monitoring-operator:{{ ocp_tag }}
+      - openshift3/ose-console:{{ ocp_tag }}
+      - openshift3/ose-configmap-reloader:{{ ocp_tag }}
+      - openshift3/ose-control-plane:{{ ocp_tag }}
+      - openshift3/ose-deployer:{{ ocp_tag }}
+      - openshift3/ose-descheduler:{{ ocp_tag }}
+      - openshift3/ose-docker-builder:{{ ocp_tag }}
+      - openshift3/ose-docker-registry:{{ ocp_tag }}
+      - openshift3/ose-efs-provisioner:{{ ocp_tag }}
+      - openshift3/ose-egress-dns-proxy:{{ ocp_tag }}
+      - openshift3/ose-egress-http-proxy:{{ ocp_tag }}
+      - openshift3/ose-egress-router:{{ ocp_tag }}
+      - openshift3/ose-haproxy-router:{{ ocp_tag }}
+      - openshift3/ose-hyperkube:{{ ocp_tag }}
+      - openshift3/ose-hypershift:{{ ocp_tag }}
+      - openshift3/ose-keepalived-ipfailover:{{ ocp_tag }}
+      - openshift3/ose-kube-rbac-proxy:{{ ocp_tag }}
+      - openshift3/ose-kube-state-metrics:{{ ocp_tag }}
+      - openshift3/ose-metrics-server:{{ ocp_tag }}
+      - openshift3/ose-node:{{ ocp_tag }}
+      - openshift3/ose-node-problem-detector:{{ ocp_tag }}
+      - openshift3/ose-operator-lifecycle-manager:{{ ocp_tag }}
+      - openshift3/ose-ovn-kubernetes:{{ ocp_tag }}
+      - openshift3/ose-pod:{{ ocp_tag }}
+      - openshift3/ose-prometheus-config-reloader:{{ ocp_tag }}
+      - openshift3/ose-prometheus-operator:{{ ocp_tag }}
+      - openshift3/ose-recycler:{{ ocp_tag }}
+      - openshift3/ose-service-catalog:{{ ocp_tag }}
+      - openshift3/ose-template-service-broker:{{ ocp_tag }}
+      - openshift3/ose-tests:{{ ocp_tag }}
+      - openshift3/ose-web-console:{{ ocp_tag }}
+      - openshift3/postgresql-apb:{{ ocp_tag }}
+      - openshift3/registry-console:{{ ocp_tag }}
+      - openshift3/snapshot-controller:{{ ocp_tag }}
+      - openshift3/snapshot-provisioner:{{ ocp_tag }}
+      - openshift3/ose-efs-provisioner:{{ ocp_tag }}
+    ocp_logging_metrics:
+      - openshift3/logging-auth-proxy:{{ ocp_tag }}
+      - openshift3/logging-curator:{{ ocp_tag }}
+      - openshift3/logging-elasticsearch:{{ ocp_tag }}
+      - openshift3/logging-fluentd:{{ ocp_tag }}
+      - openshift3/logging-kibana:{{ ocp_tag }}
+      - openshift3/oauth-proxy:{{ ocp_tag }}
+      - openshift3/metrics-cassandra:{{ ocp_tag }}
+      - openshift3/metrics-hawkular-metrics:{{ ocp_tag }}
+      - openshift3/metrics-hawkular-openshift-agent:{{ ocp_tag }}
+      - openshift3/metrics-heapster:{{ ocp_tag }}
+      - openshift3/prometheus:{{ ocp_tag }}
+      - openshift3/prometheus-alert-buffer:{{ ocp_tag }}
+      - openshift3/prometheus-alertmanager:{{ ocp_tag }}
+      - openshift3/prometheus-node-exporter:{{ ocp_tag }}
+      - cloudforms46/cfme-openshift-postgresql
+      - cloudforms46/cfme-openshift-memcached
+      - cloudforms46/cfme-openshift-app-ui
+      - cloudforms46/cfme-openshift-app
+      - cloudforms46/cfme-openshift-embedded-ansible
+      - cloudforms46/cfme-openshift-httpd
+      - cloudforms46/cfme-httpd-configmap-generator
+      - rhgs3/rhgs-server-rhel7
+      - rhgs3/rhgs-volmanager-rhel7
+      - rhgs3/rhgs-gluster-block-prov-rhel7
+      - rhgs3/rhgs-s3-server-rhel7
+    ocp_catalog_broker:
+      - openshift3/ose-service-catalog:{{ ocp_tag }}
+      - openshift3/ose-ansible-service-broker:{{ ocp_tag }}
+      - openshift3/mediawiki-apb:{{ ocp_tag }}
+      - openshift3/postgresql-apb:{{ ocp_tag }}
+    ocp_s2i:
+      - jboss-amq-6/amq63-openshift
+      - jboss-datagrid-7/datagrid71-openshift
+      - jboss-datagrid-7/datagrid71-client-openshift
+      - jboss-datavirt-6/datavirt63-openshift
+      - jboss-datavirt-6/datavirt63-driver-openshift
+      - jboss-decisionserver-6/decisionserver64-openshift
+      - jboss-processserver-6/processserver64-openshift
+      - jboss-eap-6/eap64-openshift
+      - jboss-eap-7/eap70-openshift
+      - jboss-webserver-3/webserver31-tomcat7-openshift
+      - jboss-webserver-3/webserver31-tomcat8-openshift
+      - openshift3/jenkins-1-rhel7
+      - openshift3/jenkins-2-rhel7
+      - openshift3/jenkins-slave-base-rhel7
+      - openshift3/jenkins-slave-maven-rhel7
+      - openshift3/jenkins-slave-nodejs-rhel7
+      - rhscl/mongodb-32-rhel7
+      - rhscl/mysql-57-rhel7
+      - rhscl/perl-524-rhel7
+      - rhscl/php-56-rhel7
+      - rhscl/postgresql-95-rhel7
+      - rhscl/python-35-rhel7
+      - redhat-sso-7/sso70-openshift
+      - rhscl/ruby-24-rhel7
+      - redhat-openjdk-18/openjdk18-openshift
+      - redhat-sso-7/sso71-openshift
+      - rhscl/nodejs-6-rhel7
+      - rhscl/mariadb-101-rhel7
+      - jboss-webserver-3/webserver30-tomcat7-openshift:latest
+      - jboss-webserver-3/webserver30-tomcat7-openshift:1.1
+    verbose: false
+
+  tasks:
+   - name: Copy Images to repository
+     shell: "skopeo copy --dest-tls-verify=false docker://registry.access.redhat.com/{{ item }} docker://ocpbastion.ose3.peterlarsen.org:5000/{{ item }}"
+     with_items:
+       - "{{ ocp_host }}"
+#      - "{{ ocp_logging_metrics }}"
+#      - "{{ ocp_catalog_broker }}"
+#      - "{{ ocp_s2i }}"
+
+      # end block IMAGEPULL
+
+#- hosts: myRepoRegistery
+#  tasks:
+#  - name: Load images
+#    shell: 'docker load < {{ item }}'
+#    with_items:
+#      - ocp_host.tgz
+#      - ocp_logging_metrics.tgz
+#      - ocp_catalog_broker.tgz
+#      - ocp_s2i.tgz
+
