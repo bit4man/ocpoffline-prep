@@ -39,7 +39,7 @@
       #- rhel-7-server-extras-rpms
       #- rhel-7-server-ose-3.9-rpms
       #- rhel-7-server-ansible-2.4-rpms
-    ocp_tag: "v3.11.88"
+    ocp_tag: "v3.11"
     ocp_host:
       - rhel7/etcd:3.2.22
       - openshift3/apb-base:{{ ocp_tag }}
@@ -98,16 +98,17 @@
       - openshift3/snapshot-provisioner:{{ ocp_tag }}
       - openshift3/ose-efs-provisioner:{{ ocp_tag }}
     ocp_logging_metrics:
-      - openshift3/logging-auth-proxy:{{ ocp_tag }}
-      - openshift3/logging-curator:{{ ocp_tag }}
-      - openshift3/logging-elasticsearch:{{ ocp_tag }}
-      - openshift3/logging-fluentd:{{ ocp_tag }}
-      - openshift3/logging-kibana:{{ ocp_tag }}
-      - openshift3/oauth-proxy:{{ ocp_tag }}
       - openshift3/metrics-cassandra:{{ ocp_tag }}
       - openshift3/metrics-hawkular-metrics:{{ ocp_tag }}
       - openshift3/metrics-hawkular-openshift-agent:{{ ocp_tag }}
       - openshift3/metrics-heapster:{{ ocp_tag }}
+      - openshift3/metrics-schema-installer:{{ ocp_tag }}
+      - openshift3/oauth-proxy:{{ ocp_tag }}
+      - openshift3/ose-logging-curator5:{{ ocp_tag }}
+      - openshift3/ose-logging-elasticsearch5:{{ ocp_tag }}
+      - openshift3/ose-logging-eventrouter:{{ ocp_tag }}
+      - openshift3/ose-logging-fluentd:{{ ocp_tag }}
+      - openshift3/ose-logging-kibana5:{{ ocp_tag }}
       - openshift3/prometheus:{{ ocp_tag }}
       - openshift3/prometheus-alert-buffer:{{ ocp_tag }}
       - openshift3/prometheus-alertmanager:{{ ocp_tag }}
@@ -123,11 +124,6 @@
       - rhgs3/rhgs-volmanager-rhel7
       - rhgs3/rhgs-gluster-block-prov-rhel7
       - rhgs3/rhgs-s3-server-rhel7
-    ocp_catalog_broker:
-      - openshift3/ose-service-catalog:{{ ocp_tag }}
-      - openshift3/ose-ansible-service-broker:{{ ocp_tag }}
-      - openshift3/mediawiki-apb:{{ ocp_tag }}
-      - openshift3/postgresql-apb:{{ ocp_tag }}
     ocp_s2i:
       - jboss-amq-6/amq63-openshift
       - jboss-datagrid-7/datagrid71-openshift
@@ -166,8 +162,7 @@
      shell: "skopeo copy --dest-tls-verify=false docker://registry.access.redhat.com/{{ item }} docker://ocpbastion.ose3.peterlarsen.org:5000/{{ item }}"
      with_items:
        - "{{ ocp_host }}"
-#      - "{{ ocp_logging_metrics }}"
-#      - "{{ ocp_catalog_broker }}"
+       - "{{ ocp_logging_metrics }}"
 #      - "{{ ocp_s2i }}"
 
       # end block IMAGEPULL
